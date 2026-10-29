@@ -13,15 +13,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /app/seed-gutenberg-books .
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /app/seed-images ./scripts/seed-images.go
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.24
 WORKDIR /app
 
-# Install CA certificates for HTTPS requests
-RUN sed -i 's/https/http/' /etc/apk/repositories && \
-    apk update && \
-    apk add --no-cache ca-certificates && \
-    update-ca-certificates && \
-    sed -i 's/http/https/' /etc/apk/repositories
+# The build stage's public CA bundle, without a package download.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
