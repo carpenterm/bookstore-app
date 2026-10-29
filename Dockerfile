@@ -2,16 +2,15 @@
 FROM golang:1.25-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
-ENV GOSUMDB=off
-RUN go mod download
+COPY vendor/ ./vendor/
 COPY . .
 
 # Build main application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/web
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /app/main ./cmd/web
 
 # Build seed binaries
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/seed-gutenberg-books ./scripts/seed-gutenberg-books.go
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/seed-images ./scripts/seed-images.go
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /app/seed-gutenberg-books ./scripts/seed-gutenberg-books.go
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /app/seed-images ./scripts/seed-images.go
 
 # Final stage
 FROM alpine:latest
