@@ -4,46 +4,86 @@ import (
 	"DemoApp/internal/models"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"time"
 )
 
 const (
 	productIndex = "products"
 )
 
-type ElasticsearchRepository struct {
-	client *elasticsearch.Client
+// SearchConfig reaches an Elasticsearch or OpenSearch cluster: both speak the
+// same REST API for everything the store uses.
+type SearchConfig struct {
+	URL      string
+	Username string
+	Password string
+	// InsecureTLS accepts a self-signed certificate, as a lab OpenSearch has.
+	InsecureTLS bool
 }
 
-func NewElasticsearchRepository(addresses []string) (*ElasticsearchRepository, error) {
-	cfg := elasticsearch.Config{
-		Addresses: addresses,
-	}
+// ElasticsearchRepository indexes and searches products in Elasticsearch or
+// OpenSearch.
+type ElasticsearchRepository struct {
+	cfg    SearchConfig
+	client *http.Client
+}
 
-	es, err := elasticsearch.NewClient(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("error creating Elasticsearch client: %w", err)
-	}
+// searchResponse is one REST call's outcome.
+type searchResponse struct {
+	StatusCode int
+	Body       []byte
+}
 
-	// Check cluster health
-	res, err := es.Info()
+func (r searchResponse) IsError() bool  { return r.StatusCode >= 300 }
+func (r searchResponse) String() string { return fmt.Sprintf("[%d] %s", r.StatusCode, r.Body) }
+
+// do sends one REST call; body may be nil.
+func (r *ElasticsearchRepository) do(ctx context.Context, method, path, contentType string, body io.Reader) (searchResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimSuffix(r.cfg.URL, "/")+path, body)
 	if err != nil {
-		return nil, fmt.Errorf("error getting Elasticsearch info: %w", err)
+		return searchResponse{}, err
+	}
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	if r.cfg.Username != "" {
+		req.SetBasicAuth(r.cfg.Username, r.cfg.Password)
+	}
+	res, err := r.client.Do(req)
+	if err != nil {
+		return searchResponse{}, err
 	}
 	defer res.Body.Close()
-
-	if res.IsError() {
-		return nil, fmt.Errorf("elasticsearch error: %s", res.String())
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return searchResponse{}, err
 	}
+	return searchResponse{StatusCode: res.StatusCode, Body: data}, nil
+}
 
-	repo := &ElasticsearchRepository{client: es}
+func NewElasticsearchRepository(cfg SearchConfig) (*ElasticsearchRepository, error) {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if cfg.InsecureTLS {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // opt-in, for a lab cluster
+	}
+	repo := &ElasticsearchRepository{cfg: cfg, client: &http.Client{Transport: transport, Timeout: 30 * time.Second}}
+
+	// Check the cluster answers
+	res, err := repo.do(context.Background(), http.MethodGet, "/", "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("error reaching the search cluster: %w", err)
+	}
+	if res.IsError() {
+		return nil, fmt.Errorf("search cluster error: %s", res.String())
+	}
 
 	// Initialize index
 	if err := repo.initializeIndex(); err != nil {
@@ -55,11 +95,10 @@ func NewElasticsearchRepository(addresses []string) (*ElasticsearchRepository, e
 
 func (r *ElasticsearchRepository) initializeIndex() error {
 	// Check if index exists
-	res, err := r.client.Indices.Exists([]string{productIndex})
+	res, err := r.do(context.Background(), http.MethodHead, "/"+productIndex, "", nil)
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
 
 	// If index exists, return
 	if res.StatusCode == 200 {
@@ -130,16 +169,10 @@ func (r *ElasticsearchRepository) initializeIndex() error {
 		}
 	}`
 
-	req := esapi.IndicesCreateRequest{
-		Index: productIndex,
-		Body:  strings.NewReader(mapping),
-	}
-
-	res, err = req.Do(context.Background(), r.client)
+	res, err = r.do(context.Background(), http.MethodPut, "/"+productIndex, "application/json", strings.NewReader(mapping))
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
 
 	if res.IsError() {
 		return fmt.Errorf("error creating index: %s", res.String())
@@ -169,21 +202,14 @@ func (r *ElasticsearchRepository) IndexProduct(product models.Product) error {
 	}
 
 	// Index the document with product ID as document ID
-	req := esapi.IndexRequest{
-		Index:      productIndex,
-		DocumentID: strconv.Itoa(product.ID),
-		Body:       bytes.NewReader(data),
-		Refresh:    "true",
-	}
-
-	res, err := req.Do(context.Background(), r.client)
+	res, err := r.do(context.Background(), http.MethodPut,
+		"/"+productIndex+"/_doc/"+strconv.Itoa(product.ID)+"?refresh=true", "application/json", bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("error indexing document: %w", err)
 	}
-	defer res.Body.Close()
 
 	if res.IsError() {
-		return fmt.Errorf("error response from Elasticsearch: %s", res.String())
+		return fmt.Errorf("error response from the search cluster: %s", res.String())
 	}
 
 	return nil
@@ -233,11 +259,10 @@ func (r *ElasticsearchRepository) IndexProducts(products []models.Product) error
 		buf.WriteByte('\n')
 	}
 
-	res, err := r.client.Bulk(bytes.NewReader(buf.Bytes()), r.client.Bulk.WithIndex(productIndex), r.client.Bulk.WithRefresh("true"))
+	res, err := r.do(context.Background(), http.MethodPost, "/"+productIndex+"/_bulk?refresh=true", "application/x-ndjson", &buf)
 	if err != nil {
 		return fmt.Errorf("error executing bulk request: %w", err)
 	}
-	defer res.Body.Close()
 
 	if res.IsError() {
 		return fmt.Errorf("error response from bulk request: %s", res.String())
@@ -381,16 +406,10 @@ func (r *ElasticsearchRepository) SearchProducts(query string, categoryID int) (
 	}
 
 	// Perform search
-	res, err := r.client.Search(
-		r.client.Search.WithContext(context.Background()),
-		r.client.Search.WithIndex(productIndex),
-		r.client.Search.WithBody(bytes.NewReader(buf.Bytes())),
-		r.client.Search.WithTrackTotalHits(true),
-	)
+	res, err := r.do(context.Background(), http.MethodPost, "/"+productIndex+"/_search?track_total_hits=true", "application/json", &buf)
 	if err != nil {
 		return nil, fmt.Errorf("error performing search: %w", err)
 	}
-	defer res.Body.Close()
 
 	if res.IsError() {
 		return nil, fmt.Errorf("error response from search: %s", res.String())
@@ -398,7 +417,7 @@ func (r *ElasticsearchRepository) SearchProducts(query string, categoryID int) (
 
 	// Parse response
 	var result map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(res.Body, &result); err != nil {
 		return nil, fmt.Errorf("error parsing response: %w", err)
 	}
 
@@ -417,20 +436,14 @@ func (r *ElasticsearchRepository) SearchProducts(query string, categoryID int) (
 
 // DeleteProduct removes a product from the index
 func (r *ElasticsearchRepository) DeleteProduct(productID int) error {
-	req := esapi.DeleteRequest{
-		Index:      productIndex,
-		DocumentID: strconv.Itoa(productID),
-		Refresh:    "true",
-	}
-
-	res, err := req.Do(context.Background(), r.client)
+	res, err := r.do(context.Background(), http.MethodDelete,
+		"/"+productIndex+"/_doc/"+strconv.Itoa(productID)+"?refresh=true", "", nil)
 	if err != nil {
 		return fmt.Errorf("error deleting document: %w", err)
 	}
-	defer res.Body.Close()
 
 	if res.IsError() && res.StatusCode != 404 {
-		return fmt.Errorf("error response from Elasticsearch: %s", res.String())
+		return fmt.Errorf("error response from the search cluster: %s", res.String())
 	}
 
 	return nil

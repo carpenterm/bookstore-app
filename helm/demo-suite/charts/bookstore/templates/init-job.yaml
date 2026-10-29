@@ -98,12 +98,12 @@ spec:
             - sh
             - -c
             - |
-              echo "Waiting for MinIO..."
-              until wget -q --spider http://${MINIO_ENDPOINT}/minio/health/live 2>/dev/null; do
-                echo "MinIO is unavailable - sleeping"
+              echo "Waiting for object storage..."
+              until nc -z "${MINIO_ENDPOINT%:*}" "${MINIO_ENDPOINT##*:}" 2>/dev/null; do
+                echo "Object storage is unavailable - sleeping"
                 sleep 2
               done
-              echo "MinIO is up!"
+              echo "Object storage is up!"
           envFrom:
             - configMapRef:
                 name: app-config

@@ -22,6 +22,12 @@ global:
   gatewayAPI:
     enabled: true
     className: istio
+    # Attach the HTTPRoutes to an existing Gateway instead of creating
+    # demo-gateway (e.g. a platform's shared one). Empty name = create our own.
+    gatewayRef:
+      name: ""
+      namespace: ""
+      sectionName: ""
 
   # --- TLS via cert-manager ---
   # Requires cert-manager installed on the cluster.
@@ -29,6 +35,22 @@ global:
   tls:
     enabled: true
     issuer: demo-issuer
+    # false uses an existing ClusterIssuer named by issuer instead of creating one.
+    createIssuer: true
+
+  # Extra labels for the bookstore, reader and chatbot namespaces, e.g. to
+  # enrol them in a service mesh.
+  namespaceLabels: {}
+
+  # Existing services shared by the store and the reader, used instead of the
+  # bundled Redis and MinIO when set. S3 keys are each app's
+  # secrets.minioAccessKey and secrets.minioSecretKey.
+  external:
+    redis:
+      url: ""   # host:port
+    s3:
+      endpoint: ""   # host:port
+      useSSL: false
 
 # --- Bookstore (main application) ---
 bookstore:

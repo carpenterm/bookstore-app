@@ -1,4 +1,5 @@
-{{- if .Values.global.gatewayAPI.enabled }}
+{{- $ref := .Values.global.gatewayAPI.gatewayRef | default dict }}
+{{- if and .Values.global.gatewayAPI.enabled (not $ref.name) }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:

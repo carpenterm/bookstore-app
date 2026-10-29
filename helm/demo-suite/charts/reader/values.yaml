@@ -43,3 +43,12 @@ secrets:
   minioAccessKey: minioadmin
   minioSecretKey: minioadmin-secret
   sessionSecret: reader-session-secret-change-me
+
+# Set by the demo-suite chart; see its values.yaml.
+global:
+  external:
+    redis:
+      url: ""
+    s3:
+      endpoint: ""
+      useSSL: false

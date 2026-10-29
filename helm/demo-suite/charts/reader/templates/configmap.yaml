@@ -9,9 +9,9 @@ metadata:
 data:
   PORT: "8081"
   MINIO_BUCKET: "books-epub"
-  MINIO_USE_SSL: "false"
+  MINIO_USE_SSL: {{ .Values.global.external.s3.useSSL | default false | quote }}
   BOOKSTORE_API_URL: "http://app-service.bookstore.svc.cluster.local:80"
-  REDIS_URL: "redis://redis-service.bookstore.svc.cluster.local:6379"
-  MINIO_ENDPOINT: "minio-service.bookstore.svc.cluster.local:9000"
+  REDIS_URL: {{ printf "redis://%s" (.Values.global.external.redis.url | default "redis-service.bookstore.svc.cluster.local:6379") | quote }}
+  MINIO_ENDPOINT: {{ .Values.global.external.s3.endpoint | default "minio-service.bookstore.svc.cluster.local:9000" | quote }}
   BOOKSTORE_BROWSER_URL: {{ .Values.bookstoreBrowserURL | default (printf "http://bookstore.%s" .Values.global.domain) | quote }}
 {{- end }}

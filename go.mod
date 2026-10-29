@@ -3,7 +3,6 @@ module DemoApp
 go 1.25.5
 
 require (
-	github.com/elastic/go-elasticsearch/v8 v8.11.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/lib/pq v1.10.9
@@ -18,7 +17,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/elastic/elastic-transport-go/v8 v8.3.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
@@ -30,7 +28,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
-	golang.org/x/image v0.35.0 // indirect
 	golang.org/x/net v0.45.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/text v0.33.0 // indirect

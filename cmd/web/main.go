@@ -24,7 +24,17 @@ func main() {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbHost := os.Getenv("DB_HOST")
 	dbName := os.Getenv("DB_NAME")
-	esURL := os.Getenv("ES_URL")
+	// SEARCH_URL reaches Elasticsearch or OpenSearch; ES_URL is its old name.
+	esURL := os.Getenv("SEARCH_URL")
+	if esURL == "" {
+		esURL = os.Getenv("ES_URL")
+	}
+	searchConfig := repository.SearchConfig{
+		URL:         esURL,
+		Username:    os.Getenv("SEARCH_USERNAME"),
+		Password:    os.Getenv("SEARCH_PASSWORD"),
+		InsecureTLS: os.Getenv("SEARCH_INSECURE_TLS") == "true",
+	}
 	redisURL := os.Getenv("REDIS_URL")
 	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
 	minioAccessKey := os.Getenv("MINIO_ACCESS_KEY")
@@ -114,7 +124,7 @@ func main() {
 		var es *repository.ElasticsearchRepository
 		err := retryWithBackoff("Elasticsearch", 10, 2*time.Second, func() error {
 			var initErr error
-			es, initErr = repository.NewElasticsearchRepository([]string{esURL})
+			es, initErr = repository.NewElasticsearchRepository(searchConfig)
 			return initErr
 		})
 

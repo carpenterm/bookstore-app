@@ -6,14 +6,18 @@ metadata:
   labels:
     {{- include "bookstore.labels" . | nindent 4 }}
 data:
-  DB_HOST: "postgres-service"
-  DB_PORT: "5432"
-  DB_NAME: "bookstore"
-  REDIS_URL: "redis-service:6379"
-  {{- if .Values.elasticsearch.enabled }}
-  ES_URL: "http://elasticsearch-service:9200"
+  DB_HOST: {{ .Values.postgres.external.host | default "postgres-service" | quote }}
+  DB_PORT: {{ .Values.postgres.external.port | default 5432 | quote }}
+  DB_NAME: {{ .Values.postgres.external.database | default "bookstore" | quote }}
+  REDIS_URL: {{ .Values.global.external.redis.url | default "redis-service:6379" | quote }}
+  {{- if .Values.search.url }}
+  SEARCH_URL: {{ .Values.search.url | quote }}
+  SEARCH_USERNAME: {{ .Values.search.username | quote }}
+  SEARCH_INSECURE_TLS: {{ .Values.search.insecureTLS | default false | quote }}
+  {{- else if .Values.elasticsearch.enabled }}
+  SEARCH_URL: "http://elasticsearch-service:9200"
   {{- end }}
-  MINIO_ENDPOINT: "minio-service:9000"
-  MINIO_USE_SSL: "false"
+  MINIO_ENDPOINT: {{ .Values.global.external.s3.endpoint | default "minio-service:9000" | quote }}
+  MINIO_USE_SSL: {{ .Values.global.external.s3.useSSL | default false | quote }}
   READER_BROWSER_URL: {{ .Values.readerBrowserURL | default (printf "https://reader.%s" .Values.global.domain) | quote }}
   CHATBOT_BROWSER_URL: {{ .Values.chatbotBrowserURL | default (printf "https://chatbot.%s" .Values.global.domain) | quote }}

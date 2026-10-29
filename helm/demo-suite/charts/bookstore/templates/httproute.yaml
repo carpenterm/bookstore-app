@@ -7,9 +7,13 @@ metadata:
   labels:
     {{- include "bookstore.labels" . | nindent 4 }}
 spec:
+  {{- $ref := .Values.global.gatewayAPI.gatewayRef | default dict }}
   parentRefs:
-    - name: demo-gateway
-      namespace: bookstore
+    - name: {{ $ref.name | default "demo-gateway" }}
+      namespace: {{ $ref.namespace | default "bookstore" }}
+      {{- with $ref.sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
   hostnames:
     - {{ include "bookstore.ingressHost" . | quote }}
   rules:

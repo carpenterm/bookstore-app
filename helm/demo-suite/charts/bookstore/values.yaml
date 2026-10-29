@@ -18,6 +18,12 @@ ingress:
   annotations: {}
 
 postgres:
+  # Use an existing PostgreSQL instead of the bundled one; secrets.dbUser and
+  # secrets.dbPassword log in to it.
+  external:
+    host: ""
+    port: 5432
+    database: bookstore
   image: ghcr.io/tmm-demo-apps/postgres:14-alpine
   storage: 10Gi
   resources:
@@ -38,6 +44,14 @@ redis:
     limits:
       memory: "512Mi"
       cpu: "500m"
+
+# An existing Elasticsearch or OpenSearch, used instead of the bundled
+# Elasticsearch when url is set.
+search:
+  url: ""
+  username: ""
+  password: ""
+  insecureTLS: false
 
 elasticsearch:
   enabled: true
@@ -81,3 +95,12 @@ hpa:
 
 readerBrowserURL: ""
 chatbotBrowserURL: ""
+
+# Set by the demo-suite chart; see its values.yaml.
+global:
+  external:
+    redis:
+      url: ""
+    s3:
+      endpoint: ""
+      useSSL: false

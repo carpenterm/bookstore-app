@@ -4,6 +4,9 @@ metadata:
   name: bookstore
   labels:
     {{- include "bookstore.labels" . | nindent 4 }}
+    {{- with .Values.global.namespaceLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
     environment: production
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/warn: privileged
