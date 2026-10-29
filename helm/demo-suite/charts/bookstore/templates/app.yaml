@@ -64,6 +64,13 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: MINIO_SECRET_KEY
+            {{- if .Values.search.password }}
+            - name: SEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SEARCH_PASSWORD
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /health
