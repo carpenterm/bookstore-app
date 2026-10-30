@@ -1,0 +1,231 @@
+kind: Dashboard
+metadata:
+  name: bookstore-services
+spec:
+  display:
+    name: bookstore-services
+  duration: 1h
+  refreshInterval: 30s
+  variables: []
+  panels:
+    p0:
+      kind: Panel
+      spec:
+        display:
+          name: Requests by route
+        plugin:
+          kind: TimeSeriesChart
+          spec:
+            format:
+              unit: requests/sec
+        queries:
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: sum by (service_name, http_route) (rate(http_server_request_duration_seconds_count{service_name=~"bookstore-store|bookstore-reader"}[5m]))
+                seriesNameFormat: '{{service_name}} {{http_route}}'
+    p1:
+      kind: Panel
+      spec:
+        display:
+          name: Errors (5xx)
+        plugin:
+          kind: TimeSeriesChart
+          spec:
+            format:
+              unit: requests/sec
+        queries:
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~"bookstore-store|bookstore-reader",http_response_status_code=~"5.."}[5m]))
+                seriesNameFormat: '{{service_name}}'
+    p2:
+      kind: Panel
+      spec:
+        display:
+          name: Duration p95 by route
+        plugin:
+          kind: TimeSeriesChart
+          spec:
+            format:
+              unit: seconds
+        queries:
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: histogram_quantile(0.95, sum by (le, service_name, http_route) (rate(http_server_request_duration_seconds_bucket{service_name=~"bookstore-store|bookstore-reader"}[5m])))
+                seriesNameFormat: '{{service_name}} {{http_route}}'
+    p3:
+      kind: Panel
+      spec:
+        display:
+          name: Checkouts and searches
+        plugin:
+          kind: TimeSeriesChart
+          spec:
+            format:
+              unit: requests/sec
+        queries:
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: sum(rate(http_server_request_duration_seconds_count{service_name="bookstore-store",http_route=~"/checkout/process"}[5m]))
+                seriesNameFormat: Checkouts
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: sum(rate(http_server_request_duration_seconds_count{service_name="bookstore-store",http_route=~"/|/partials/search-suggestions"}[5m]))
+                seriesNameFormat: Searches and browsing
+    p4:
+      kind: Panel
+      spec:
+        display:
+          name: PostgreSQL call duration p95
+        plugin:
+          kind: TimeSeriesChart
+          spec:
+            format:
+              unit: seconds
+        queries:
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: histogram_quantile(0.95, sum by (le, service_name) (rate(db_client_operation_duration_seconds_bucket{service_name=~"bookstore-store|bookstore-reader",db_system_name="postgresql"}[5m])))
+                seriesNameFormat: '{{service_name}}'
+    p5:
+      kind: Panel
+      spec:
+        display:
+          name: Cache call duration p95
+        plugin:
+          kind: TimeSeriesChart
+          spec:
+            format:
+              unit: seconds
+        queries:
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: histogram_quantile(0.95, sum by (le, service_name) (rate(db_client_operation_duration_seconds_bucket{service_name=~"bookstore-store|bookstore-reader",db_system_name="redis"}[5m])))
+                seriesNameFormat: '{{service_name}}'
+    p6:
+      kind: Panel
+      spec:
+        display:
+          name: CPU
+        plugin:
+          kind: TimeSeriesChart
+          spec:
+            format:
+              unit: decimal
+        queries:
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace=~"bookstore|reader",container!=""}[5m]))
+                seriesNameFormat: '{{namespace}}/{{pod}}'
+    p7:
+      kind: Panel
+      spec:
+        display:
+          name: Memory
+        plugin:
+          kind: TimeSeriesChart
+          spec:
+            format:
+              unit: bytes
+        queries:
+        - kind: TimeSeriesQuery
+          spec:
+            plugin:
+              kind: PrometheusTimeSeriesQuery
+              spec:
+                query: sum by (namespace, pod) (container_memory_working_set_bytes{namespace=~"bookstore|reader",container!=""})
+                seriesNameFormat: '{{namespace}}/{{pod}}'
+  layouts:
+  - kind: Grid
+    spec:
+      display:
+        title: Store and reader
+        collapse:
+          open: true
+      items:
+      - x: 0
+        y: 0
+        width: 12
+        height: 8
+        content:
+          $ref: '#/spec/panels/p0'
+      - x: 12
+        y: 0
+        width: 12
+        height: 8
+        content:
+          $ref: '#/spec/panels/p1'
+      - x: 0
+        y: 8
+        width: 12
+        height: 8
+        content:
+          $ref: '#/spec/panels/p2'
+      - x: 12
+        y: 8
+        width: 12
+        height: 8
+        content:
+          $ref: '#/spec/panels/p3'
+  - kind: Grid
+    spec:
+      display:
+        title: Dependencies
+        collapse:
+          open: true
+      items:
+      - x: 0
+        y: 0
+        width: 12
+        height: 8
+        content:
+          $ref: '#/spec/panels/p4'
+      - x: 12
+        y: 0
+        width: 12
+        height: 8
+        content:
+          $ref: '#/spec/panels/p5'
+  - kind: Grid
+    spec:
+      display:
+        title: Pods
+        collapse:
+          open: true
+      items:
+      - x: 0
+        y: 0
+        width: 12
+        height: 8
+        content:
+          $ref: '#/spec/panels/p6'
+      - x: 12
+        y: 0
+        width: 12
+        height: 8
+        content:
+          $ref: '#/spec/panels/p7'
