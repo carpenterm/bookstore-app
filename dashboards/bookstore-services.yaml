@@ -16,8 +16,9 @@ spec:
         plugin:
           kind: TimeSeriesChart
           spec:
-            format:
-              unit: requests/sec
+            yAxis:
+              format:
+                unit: requests/sec
         queries:
         - kind: TimeSeriesQuery
           spec:
@@ -34,8 +35,9 @@ spec:
         plugin:
           kind: TimeSeriesChart
           spec:
-            format:
-              unit: requests/sec
+            yAxis:
+              format:
+                unit: requests/sec
         queries:
         - kind: TimeSeriesQuery
           spec:
@@ -52,8 +54,9 @@ spec:
         plugin:
           kind: TimeSeriesChart
           spec:
-            format:
-              unit: seconds
+            yAxis:
+              format:
+                unit: seconds
         queries:
         - kind: TimeSeriesQuery
           spec:
@@ -70,8 +73,9 @@ spec:
         plugin:
           kind: TimeSeriesChart
           spec:
-            format:
-              unit: requests/sec
+            yAxis:
+              format:
+                unit: requests/sec
         queries:
         - kind: TimeSeriesQuery
           spec:
@@ -95,8 +99,9 @@ spec:
         plugin:
           kind: TimeSeriesChart
           spec:
-            format:
-              unit: seconds
+            yAxis:
+              format:
+                unit: seconds
         queries:
         - kind: TimeSeriesQuery
           spec:
@@ -113,8 +118,9 @@ spec:
         plugin:
           kind: TimeSeriesChart
           spec:
-            format:
-              unit: seconds
+            yAxis:
+              format:
+                unit: seconds
         queries:
         - kind: TimeSeriesQuery
           spec:
@@ -131,8 +137,9 @@ spec:
         plugin:
           kind: TimeSeriesChart
           spec:
-            format:
-              unit: decimal
+            yAxis:
+              format:
+                unit: decimal
         queries:
         - kind: TimeSeriesQuery
           spec:
@@ -149,8 +156,9 @@ spec:
         plugin:
           kind: TimeSeriesChart
           spec:
-            format:
-              unit: bytes
+            yAxis:
+              format:
+                unit: bytes
         queries:
         - kind: TimeSeriesQuery
           spec:
